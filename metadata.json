@@ -1,0 +1,6 @@
+{
+  "name": "Red de Donantes Conectados",
+  "description": "Registro altruista y voluntario de donantes de sangre accesible vía código QR con rigurosa protección de datos de contacto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

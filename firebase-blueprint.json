@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "DonorProfile": {
+      "title": "DonorProfile",
+      "description": "Contiene los datos de registro voluntario y altruista de un donante.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID único de usuario de Auth o generado." },
+        "fullName": { "type": "string", "description": "Nombre completo legal del donante (Privado)." },
+        "alias": { "type": "string", "description": "Alias público visible en la cartilla comunitaria." },
+        "dni": { "type": "string", "description": "Documento nacional de identidad (Privado)." },
+        "phone": { "type": "string", "description": "Número de teléfono para contacto de emergencia (Privado)." },
+        "email": { "type": "string", "description": "Correo electrónico registrado." },
+        "city": { "type": "string", "description": "Ciudad/localidad de residencia (Nodo 1)." },
+        "state": { "type": "string", "description": "Provincia o Estado federal de residencia (Nodo 2)." },
+        "country": { "type": "string", "description": "País de residencia (Nodo 3)." },
+        "bloodGroup": { "type": "string", "enum": ["A", "B", "AB", "O"] },
+        "bloodFactor": { "type": "string", "enum": ["+", "-"] },
+        "lastDonationDate": { "type": "string", "format": "date", "description": "Fecha de última donación (YYYY-MM-DD)" },
+        "gender": { "type": "string", "enum": ["M", "F"] },
+        "isAvailableOverride": { "type": "boolean", "description": "Permite desactivarse temporalmente" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["fullName", "alias", "dni", "phone", "email", "city", "state", "country", "bloodGroup", "bloodFactor", "gender", "lastDonationDate"]
+    },
+    "ContactRequestLog": {
+      "title": "ContactRequestLog",
+      "description": "Registro de auditoría obligatorio cuando un usuario solicita contactar a un donante por urgencia.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "requesterName": { "type": "string", "description": "Nombre de quien declara la emergencia." },
+        "patientName": { "type": "string", "description": "Nombre del paciente receptor." },
+        "hospital": { "type": "string", "description": "Institución hospitalaria destinataria." },
+        "urgencyReason": { "type": "string", "description": "Motivo justificado de la necesidad urgente." },
+        "donorId": { "type": "string", "description": "ID del donante cuyo teléfono fue revelado." },
+        "donorAlias": { "type": "string", "description": "Alias del donante." },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["requesterName", "patientName", "hospital", "urgencyReason", "donorId", "donorAlias"]
+    }
+  },
+  "firestore": {
+    "/donors/{donorId}": {
+      "schema": "DonorProfile",
+      "description": "Listado de donantes de sangre."
+    },
+    "/contact_requests/{requestId}": {
+      "schema": "ContactRequestLog",
+      "description": "Registro de auditoría inmutable de solicitudes de visualización de información de contacto privado."
+    }
+  }
+}

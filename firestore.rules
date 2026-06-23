@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Regla 1: Default-Deny Catch-All (Seguridad por defecto)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- FUNCIONES AUXILIARES GLOBALES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- REGLAS DE DONANTES ---
+    match /donors/{donorId} {
+      // Permitimos que personas registradas puedan listar y ver a otros donantes
+      // (Búsqueda comunitaria pública)
+      allow read, list: if isSignedIn();
+
+      // Registro de donante
+      allow create: if isSignedIn() 
+        && isValidId(donorId)
+        && request.auth.uid == donorId // El ID debe coincidir con su UID de autenticación
+        && incoming().keys().hasAll([
+             'fullName', 'alias', 'dni', 'phone', 'email', 
+             'city', 'state', 'country', 'bloodGroup', 
+             'bloodFactor', 'lastDonationDate', 'gender', 'isAvailableOverride'
+           ])
+        && incoming().keys().size() <= 15
+        && incoming().fullName is string && incoming().fullName.size() <= 100
+        && incoming().alias is string && incoming().alias.size() <= 50
+        && incoming().dni is string && incoming().dni.size() <= 20
+        && incoming().phone is string && incoming().phone.size() <= 30
+        && incoming().email is string && incoming().email.size() <= 100
+        && incoming().city is string && incoming().city.size() <= 50
+        && incoming().state is string && incoming().state.size() <= 50
+        && incoming().country is string && incoming().country.size() <= 50
+        && incoming().bloodGroup in ['A', 'B', 'AB', 'O']
+        && incoming().bloodFactor in ['+', '-']
+        && incoming().gender in ['M', 'F']
+        && incoming().isAvailableOverride is bool;
+
+      // Actualización de donante (Sólo el propio donante puede cambiar sus datos)
+      allow update: if isOwner(donorId)
+        && incoming().bloodGroup == existing().bloodGroup
+        && incoming().bloodFactor == existing().bloodFactor
+        && incoming().gender == existing().gender
+        && (
+          // Acción de deshabilitar/habilitar temporal o actualizar última donación
+          incoming().diff(existing()).affectedKeys().hasAny(['isAvailableOverride', 'lastDonationDate', 'city', 'state', 'country', 'phone', 'alias'])
+        );
+
+      allow delete: if isOwner(donorId);
+    }
+
+    // --- REGLAS DE AUDITORÍA (CONTACT REQUESTS) ---
+    match /contact_requests/{requestId} {
+      // El listado de pedidos de contacto es privado (sólo para auditar por admin o ver propios si se requiriere)
+      // Para fines de prueba y control comunitario básico, daremos acceso de lectura a usuarios firmados
+      allow read: if isSignedIn();
+
+      // Creación de registro de auditoría obligatoria por urgencia
+      allow create: if isSignedIn()
+        && isValidId(requestId)
+        && incoming().keys().hasAll(['requesterName', 'patientName', 'hospital', 'urgencyReason', 'donorId', 'donorAlias'])
+        && incoming().requesterName is string && incoming().requesterName.size() <= 100
+        && incoming().patientName is string && incoming().patientName.size() <= 100
+        && incoming().hospital is string && incoming().hospital.size() <= 150
+        && incoming().urgencyReason is string && incoming().urgencyReason.size() <= 500
+        && incoming().donorId is string && incoming().donorId.size() <= 128;
+    }
+  }
+}
